@@ -23,6 +23,10 @@ typedef signed   short int s16;
 #define abs(x) (((x) > 0) ? (x) : -(x))
 #define BIT(n) (1 << (n))
 
+u16 bin_output_index = 0;
+#define PATTERN_OFFSET_LIST_MAX 1000
+u16 pattern_offsets[PATTERN_OFFSET_LIST_MAX];
+
 //------------------------------------------------------------------------------
 //--                                                                          --
 //--                           Read MOD file                                  --
@@ -176,16 +180,18 @@ u8 mod_get_index_from_period(u16 period, int pattern, int step, int channel)
 //------------------------------------------------------------------------------
 
 FILE *output_file;
+FILE *output_bin_file;
 char label_name[64];
 
 void out_open(void)
 {
     output_file = fopen("output.c", "w");
+    output_bin_file = fopen("output.bin", "wb");
 }
 
 void out_write_str(const char *str)
 {
-    fprintf(output_file, str);
+    fprintf(output_file, "%s", str);
 }
 
 void out_write_dec(u8 number)
@@ -198,9 +204,21 @@ void out_write_hex(u8 number)
     fprintf(output_file, "%02X", number);
 }
 
+void out_write_hex_u16(u16 number)
+{
+    fprintf(output_file, "%04X", number);
+}
+
+void out_write_bin(u8 number)
+{
+    bin_output_index++;
+    fwrite(&number,sizeof(number),1,output_bin_file);
+}
+
 void out_close(void)
 {
     fclose(output_file);
+    fclose(output_bin_file);
 }
 
 //------------------------------------------------------------------------------
@@ -460,18 +478,21 @@ void convert_channel1(u8 pattern_number, u8 step_number, u8 note_index,
         }
     }
 
-    out_write_str("0x");
-    out_write_hex(result[0]);
+    // out_write_str("0x");
+    // out_write_hex(result[0]);
+    out_write_bin(result[0]);
 
     if (command_len > 1)
     {
-        out_write_str(",0x");
-        out_write_hex(result[1]);
+        //out_write_str(",0x");
+        //out_write_hex(result[1]);
+        out_write_bin(result[1]);
 
         if (command_len > 2)
         {
-            out_write_str(",0x");
-            out_write_hex(result[2]);
+            //out_write_str(",0x");
+            //out_write_hex(result[2]);
+            out_write_bin(result[2]);
         }
     }
 }
@@ -563,18 +584,21 @@ void convert_channel2(u8 pattern_number, u8 step_number, u8 note_index,
         }
     }
 
-    out_write_str("0x");
-    out_write_hex(result[0]);
+    //out_write_str("0x");
+    //out_write_hex(result[0]);
+    out_write_bin(result[0]);
 
     if (command_len > 1)
     {
-        out_write_str(",0x");
-        out_write_hex(result[1]);
+        //out_write_str(",0x");
+        //out_write_hex(result[1]);
+        out_write_bin(result[1]);
 
         if (command_len > 2)
         {
-            out_write_str(",0x");
-            out_write_hex(result[2]);
+            //out_write_str(",0x");
+            //out_write_hex(result[2]);
+            out_write_bin(result[2]);
         }
     }
 }
@@ -676,18 +700,21 @@ void convert_channel3(u8 pattern_number, u8 step_number, u8 note_index,
         }
     }
 
-    out_write_str("0x");
-    out_write_hex(result[0]);
+    //out_write_str("0x");
+    //out_write_hex(result[0]);
+    out_write_bin(result[0]);
 
     if (command_len > 1)
     {
-        out_write_str(",0x");
-        out_write_hex(result[1]);
+        //out_write_str(",0x");
+        //out_write_hex(result[1]);
+        out_write_bin(result[1]);
 
         if (command_len > 2)
         {
-            out_write_str(",0x");
-            out_write_hex(result[2]);
+            //out_write_str(",0x");
+            //out_write_hex(result[2]);
+            out_write_bin(result[2]);
         }
     }
 }
@@ -779,33 +806,40 @@ void convert_channel4(u8 pattern_number, u8 step_number, u8 note_index,
         }
     }
 
-    out_write_str("0x");
-    out_write_hex(result[0]);
+    //out_write_str("0x");
+    //out_write_hex(result[0]);
+    out_write_bin(result[0]);
 
     if (command_len > 1)
     {
-        out_write_str(",0x");
-        out_write_hex(result[1]);
+        //out_write_str(",0x");
+        //out_write_hex(result[1]);
+        out_write_bin(result[1]);
 
         if (command_len > 2)
         {
-            out_write_str(",0x");
-            out_write_hex(result[2]);
+            //out_write_str(",0x");
+            //out_write_hex(result[2]);
+            out_write_bin(result[2]);
         }
     }
 }
 
 void convert_pattern(_pattern_t *pattern, u8 number)
 {
-    out_write_str("const unsigned char ");
-    out_write_str(label_name);
-    out_write_dec(number);
-    out_write_str("[] = {\n");
+    // out_write_str("const unsigned char ");
+    // out_write_str(label_name);
+    // out_write_dec(number);
+    // out_write_str("[] = {\n");
+
+    // Save offset into array for current pattern
+    pattern_offsets[number] = bin_output_index;
+
 
     int step;
     for (step = 0; step < 64; step++)
     {
-        out_write_str("  ");
+        // out_write_str("  ");
 
         u8 data[4]; // Packed data
 
@@ -821,7 +855,7 @@ void convert_pattern(_pattern_t *pattern, u8 number)
         note_index = mod_get_index_from_period(sampleperiod, number, step, 1);
         convert_channel1(number, step, note_index, samplenum, effectnum,
                          effectparams);
-        out_write_str(", ");
+        // out_write_str(", ");
 
         // Channel 2
         memcpy(data, pattern->info[step][1], 4);
@@ -829,7 +863,7 @@ void convert_pattern(_pattern_t *pattern, u8 number)
         note_index = mod_get_index_from_period(sampleperiod, number, step, 2);
         convert_channel2(number, step, note_index, samplenum, effectnum,
                          effectparams);
-        out_write_str(", ");
+        // out_write_str(", ");
 
         //Channel 3
         memcpy(data, pattern->info[step][2], 4);
@@ -837,7 +871,7 @@ void convert_pattern(_pattern_t *pattern, u8 number)
         note_index = mod_get_index_from_period(sampleperiod, number, step, 3);
         convert_channel3(number, step, note_index, samplenum, effectnum,
                          effectparams);
-        out_write_str(", ");
+        // out_write_str(", ");
 
         //Channel 4
         memcpy(data, pattern->info[step][3], 4);
@@ -846,13 +880,14 @@ void convert_pattern(_pattern_t *pattern, u8 number)
         convert_channel4(number, step, note_index, samplenum, effectnum,
                          effectparams);
 
-        if (step == 63)
-            out_write_str("\n");
-        else
-            out_write_str(",\n");
+        // if (step == 63)
+        //     out_write_str("\n");
+        // else
+        //     out_write_str(",\n");
     }
 
-    out_write_str("};\n\n");
+    // out_write_str("};\n\n");
+
 }
 
 //------------------------------------------------------------------------------
@@ -960,19 +995,23 @@ int main(int argc, char *argv[])
 
     printf("\n\nPattern order...\n");
 
-    out_write_str("const unsigned char * const ");
+    // out_write_str("const unsigned char * const ");
+    out_write_str("const unsigned int ");
     out_write_str(label_name);
     out_write_str("_Data[] = {\n");
 
     for (i = 0; i < modfile->song_length; i++)
     {
         out_write_str("    ");
-        out_write_str(label_name);
-        out_write_dec(modfile->pattern_table[i]);
+        //out_write_str(label_name);
+        //out_write_dec(modfile->pattern_table[i]);
+        out_write_str("0x");
+        out_write_hex_u16( pattern_offsets[ modfile->pattern_table[i] ]);
         out_write_str(",\n");
     }
 
-    out_write_str("    0x0000\n");
+    //out_write_str("    0x0000\n");
+    out_write_str("    0xFFFF\n");
     out_write_str("};\n\n");
 
     out_close();
